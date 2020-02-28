@@ -1,6 +1,4 @@
 #include <bits/stdc++.h>
-#include "input.h"
-
 using namespace std;
 
 #define pb push_back
@@ -13,12 +11,17 @@ using namespace std;
 
 typedef long long ll;
 int c = 0;
-
+int R = 0;
+int puzzle[20][20];
 int dir_r[6] = {0, -1, 0, 1};
 int dir_c[6] = {1, 0, -1, 0};
 
 map<string, int> mp;
 map<pair<string, int>, int> mp2;
+
+vector<double> bfs, ucs, dls, ids, gbfs, a_star;
+
+int online;
 int tot_node;
 struct Node {
        int state[20][20];
@@ -32,7 +35,7 @@ struct Node {
 
 struct UCS_compare {
        bool operator()(const Node& x, const Node& y) const {
-              return y.g_cost < x.g_cost;
+              return x.g_cost > y.g_cost;
        }
 };
 struct GBFS_compare {
@@ -47,16 +50,18 @@ struct AStar_compare {
        }
 };
 
-// void input() {  // input
-//        cin >> R;
-//        cout<<R<<endl;
-//        //puzzle[i][j] = 0 means blank space
-//        for (int i = 0; i < R; ++i) {
-//               for (int j = 0; j < R; ++j) {
-//                      cin >> puzzle[i][j];
-//               }
-//        }
-// }
+void input() {  // input
+       double N;
+       cout << "Enter N of N-puzzle: ";
+       cin >> N;
+       N++;
+       R = (int)(sqrt(N));
+       for (int i = 0; i < R; ++i) {
+              for (int j = 0; j < R; ++j) {
+                     cin >> puzzle[i][j];
+              }
+       }
+}
 void make_visit(int p[][20]) {
        string cur = "";
        for (int i = 0; i < R; ++i) {
@@ -66,15 +71,7 @@ void make_visit(int p[][20]) {
        }
        mp[cur] = 1;
 }
-void make_not_visit(int p[][20]) {
-       string cur = "";
-       for (int i = 0; i < R; ++i) {
-              for (int j = 0; j < R; ++j) {
-                     cur += p[i][j] + '0';
-              }
-       }
-       mp[cur] = 0;
-}
+
 bool is_visit(int p[][20]) {
        string cur = "";
        for (int i = 0; i < R; ++i) {
@@ -160,7 +157,7 @@ void print_par(int p[][20], string path, int R) {
               cout << endl;
        }
 }
-void Breadth_First_Search(int p[][20], int R) {
+void Breadth_First_Search(int p[][20], int R, int online) {
        clock_t time_req = clock();
        cout << "\n\n\n";
        mp.clear();
@@ -180,12 +177,16 @@ void Breadth_First_Search(int p[][20], int R) {
               make_visit(cur.state);
 
               if (is_goal_state(cur.state, R)) {
-                     printf("\nBFS: Level  === %d\n", cur.level);
-                     cout << "Total Nodes : " << tot_node << endl;
-                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-                     print_par(cur.state, cur.path, R);
-                     cout << "------------------------------" << endl;
-
+                     bfs.pb(cur.level);
+                     bfs.pb(tot_node);
+                     bfs.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+                     if (online) {
+                            printf("\nBFS: Level  === %d\n", cur.level);
+                            cout << "Total Nodes : " << tot_node << endl;
+                            cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                            //print_par(cur.state, cur.path, R);
+                            cout << "------------------------------" << endl;
+                     }
                      return;
               }
               //0 = R,1 = U, 2 = L, 3 = D
@@ -211,9 +212,9 @@ void Breadth_First_Search(int p[][20], int R) {
        cout << "Total Nodes : " << tot_node << endl;
        cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
        cout << "------------------------------" << endl;
-
 }
-void UCS(int p[][20], int R) {
+
+void UCS(int p[][20], int R, int online) {
        cout << "\n\n\n";
        clock_t time_req = clock();
        mp.clear();
@@ -232,13 +233,16 @@ void UCS(int p[][20], int R) {
               if (is_visit(cur.state)) continue;
               make_visit(cur.state);
               if (is_goal_state(cur.state, R)) {
-                     printf("\nUCS: Level  === %d\n", cur.level);
-                     cout << "Total Nodes : " << tot_node << endl;
-                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-                     print_par(cur.state, cur.path, R);
-                     cout << "------------------------------" << endl;
-
-
+                     ucs.pb(cur.level);
+                     ucs.pb(tot_node);
+                     ucs.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+                     if (online) {
+                            printf("\nUCS: Level  === %d\n", cur.level);
+                            cout << "Total Nodes : " << tot_node << endl;
+                            cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                            print_par(cur.state, cur.path, R);
+                            cout << "------------------------------" << endl;
+                     }
                      return;
               }
               //0 = R,1 = U, 2 = L, 3 = D
@@ -265,7 +269,6 @@ void UCS(int p[][20], int R) {
        cout << "Total Nodes : " << tot_node << endl;
        cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
        cout << "------------------------------" << endl;
-
 
        return;
 }
@@ -318,7 +321,7 @@ void DLS(Node cur, int limit) {
        //make_not_visit(cur.state);
 }
 
-void dls_initiate(int p[][20], int R) {
+void dls_initiate(int p[][20], int R, int online) {
        cout << "\n\n\n";
 
        clock_t time_req = clock();
@@ -336,23 +339,29 @@ void dls_initiate(int p[][20], int R) {
               cout << "DLS: NO Solution\n";
               cout << "Total Nodes : " << tot_node << endl;
               cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+              cout << "------------------------------" << endl;
 
        } else {
-              cout << "\nDLS: Level === " << dls_ans.level << endl;
-              cout << "Total Nodes : " << tot_node << endl;
+              dls.pb(dls_ans.level);
+              dls.pb(tot_node);
+              dls.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+              if (online) {
+                     cout << "\nDLS: Level === " << dls_ans.level << endl;
+                     cout << "Total Nodes : " << tot_node << endl;
 
-              cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-              print_par(dls_ans.state, dls_ans.path, R);
+                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                     print_par(dls_ans.state, dls_ans.path, R);
+                     cout << "------------------------------" << endl;
+              }
        }
-       cout << "------------------------------" << endl;
-
 }
-void IDS(int p[][20], int R) {
+
+void IDS(int p[][20], int R, int online) {
        cout << "\n\n\n";
        clock_t time_req = clock();
        DLS_ANS = 0;
        int f = 0;
-       cout << "------------------------------" << endl;
+       if (online) cout << "------------------------------" << endl;
 
        for (int i = 0; i < R; ++i)
               for (int j = 0; j < R; ++j) {
@@ -371,19 +380,26 @@ void IDS(int p[][20], int R) {
               cout << "IDL   S: No_Solution\n";
               cout << "Total Nodes : " << tot_node << endl;
               cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+              cout << "------------------------------" << endl;
+
        }
 
        else {
-              cout << "\nIDLS: Level === " << dls_ans.level << endl;
-              cout << "Total Nodes : " << tot_node << endl;
+              ids.pb(dls_ans.level);
+              ids.pb(tot_node);
+              ids.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+              if (online) {
+                     cout << "\nIDLS: Level === " << dls_ans.level << endl;
+                     cout << "Total Nodes : " << tot_node << endl;
 
-              cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-              print_par(dls_ans.state, dls_ans.path, R);
+                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                     print_par(dls_ans.state, dls_ans.path, R);
+                     cout << "------------------------------" << endl;
+              }
        }
-       cout << "------------------------------" << endl;
-
 }
-void Greedy_Best_First_Search(int p[][20], int R) {
+
+void Greedy_Best_First_Search(int p[][20], int R, int online) {
        cout << "\n\n\n";
 
        clock_t time_req = clock();
@@ -402,16 +418,19 @@ void Greedy_Best_First_Search(int p[][20], int R) {
        while (!q.empty()) {
               Node cur = q.top();
               q.pop();
-              if (is_visit(cur.state)) continue;
+              //if (is_visit(cur.state)) continue;
               make_visit(cur.state);
               if (is_goal_state(cur.state, R)) {
-                     printf("GBFS: Level  === %d\n", cur.level);
-                     cout << "Total Nodes : " << tot_node << endl;
-                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-                     print_par(cur.state, cur.path, R);
-                     cout << "------------------------------" << endl;
-
-
+                     gbfs.pb(cur.level);
+                     gbfs.pb(tot_node);
+                     gbfs.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+                     if (online) {
+                            printf("GBFS: Level  === %d\n", cur.level);
+                            cout << "Total Nodes : " << tot_node << endl;
+                            cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                            print_par(cur.state, cur.path, R);
+                            cout << "------------------------------" << endl;
+                     }
                      return;
               }
               //0 = R,1 = U, 2 = L, 3 = D
@@ -438,9 +457,9 @@ void Greedy_Best_First_Search(int p[][20], int R) {
        cout << "Total Nodes : " << tot_node << endl;
        cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
        cout << "------------------------------" << endl;
-
 }
-void A_Star(int p[][20], int R) {
+
+void A_Star(int p[][20], int R, int online) {
        cout << "\n\n\n";
 
        clock_t time_req = clock();
@@ -462,13 +481,16 @@ void A_Star(int p[][20], int R) {
               if (is_visit(cur.state)) continue;
               make_visit(cur.state);
               if (is_goal_state(cur.state, R)) {
-                     printf("\nA*: Level  === %d\n", cur.level);
-                     cout << "Total Nodes : " << tot_node << endl;
-                     cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
-                     print_par(cur.state, cur.path, R);
-                     cout << "------------------------------" << endl;
-
-
+                     a_star.pb(cur.level);
+                     a_star.pb(tot_node);
+                     a_star.pb(((float)(clock() - time_req) / CLOCKS_PER_SEC));
+                     if (online) {
+                            printf("\nA*: Level  === %d\n", cur.level);
+                            cout << "Total Nodes : " << tot_node << endl;
+                            cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
+                            print_par(cur.state, cur.path, R);
+                            cout << "------------------------------" << endl;
+                     }
                      return;
               }
               //0 = R,1 = U, 2 = L, 3 = D
@@ -497,32 +519,137 @@ void A_Star(int p[][20], int R) {
 
        cout << "Time: " << (float)(clock() - time_req) / CLOCKS_PER_SEC << endl;
        cout << "------------------------------" << endl;
-
+}
+void bfs_write() {
+       freopen("bfs.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < bfs.size(); j += 3) {
+                     if (bfs[j] < 1)
+                            cout << fixed << setprecision(8) << bfs[j] << "  ";
+                     else
+                            cout << (int)bfs[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
+}
+void ucs_write() {
+       freopen("ucs.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < ucs.size(); j += 3) {
+                     if (ucs[j] < 1)
+                            cout << fixed << setprecision(8) << ucs[j] << "  ";
+                     else
+                            cout << (int)ucs[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
+}
+void dls_write() {
+       freopen("Dls.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < dls.size(); j += 3) {
+                     if (dls[j] < 1)
+                            cout << fixed << setprecision(8) << dls[j] << "  ";
+                     else
+                            cout << (int)dls[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
+}
+void ids_write() {
+       freopen("IDS.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < ids.size(); j += 3) {
+                     if (ids[j] < 1)
+                            cout << fixed << setprecision(8) << ids[j] << "  ";
+                     else
+                            cout << (int)ids[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
+}
+void gbfs_write() {
+       freopen("GBFS.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < gbfs.size(); j += 3) {
+                     if (gbfs[j] < 1)
+                            cout << fixed << setprecision(8) << gbfs[j] << "  ";
+                     else
+                            cout << (int)gbfs[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
+}
+void AStar_write() {
+       freopen("A_star.txt", "w", stdout);
+       for (int i = 0; i < 3; ++i) {
+              if (i == 0)
+                     cout << "Cost: ";
+              else if (i == 1)
+                     cout << "Total nodes: ";
+              else
+                     cout << "Time(s): ";
+              for (int j = i; j < a_star.size(); j += 3) {
+                     if (a_star[j] < 1)
+                            cout << fixed << setprecision(8) << a_star[j] << "  ";
+                     else
+                            cout << (int)a_star[j] << "  ";
+              }
+              cout << endl;
+       }
+       fclose(stdout);
 }
 
-void init() {
+void Online() {
        while (1) {
-              double N;
-              cout << "Enter N of N-puzzle: ";
-              cin >> N;
-              N++;
-              R = (int)(sqrt(N));
-              for (int i = 0; i < R; ++i) {
-                     for (int j = 0; j < R; ++j) {
-                            cin >> puzzle[i][j];
-                     }
-              }
+              input();
+
               while (1) {
                      cout << "Press \n 1 to BFS\n 2 to UCS\n 3 to DLS\n 4 to IDS\n 5 to GBFS\n 6 to A*\n 7 to simulate all algorithm \n";
                      int x;
                      cout << "\n\n No of Operation: ";
                      cin >> x;
-                     if (x == 1 or x == 7) Breadth_First_Search(puzzle, R);
-                     if (x == 2 or x == 7) UCS(puzzle, R);
-                     if (x == 3 or x == 7) dls_initiate(puzzle, R);
-                     if (x == 4 or x == 7) IDS(puzzle, R);
-                     if (x == 5 or x == 7) Greedy_Best_First_Search(puzzle, R);
-                     if (x == 6 or x == 7) A_Star(puzzle, R);
+                     if (x == 1 or x == 7) Breadth_First_Search(puzzle, R, 1);
+                     if (x == 2 or x == 7) UCS(puzzle, R, 1);
+                     if (x == 3 or x == 7) dls_initiate(puzzle, R, 1);
+                     if (x == 4 or x == 7) IDS(puzzle, R, 1);
+                     if (x == 5 or x == 7) Greedy_Best_First_Search(puzzle, R, 1);
+                     if (x == 6 or x == 7) A_Star(puzzle, R, 1);
                      cout << endl;
                      cout << "\n 1 to continue searching\n 2 to continue from the beginning\n 3 to exit \n\n";
                      cin >> x;
@@ -532,10 +659,45 @@ void init() {
        }
 }
 
+void Offline() {
+       freopen("in.txt", "r", stdin);
+       for (int p = 0; p < 20; ++p) {
+              cin >> R;
+              for (int i = 0; i < R; ++i) {
+                     for (int j = 0; j < R; ++j) {
+                            cin >> puzzle[i][j];
+                     }
+              }
+              Breadth_First_Search(puzzle, R, 0);
+              UCS(puzzle, R, 0);
+              Greedy_Best_First_Search(puzzle, R, 0);
+              dls_initiate(puzzle, R, 0);
+              IDS(puzzle, R, 0);
+              A_Star(puzzle, R, 0);
+              cout << "Please wait....\n";
+       }
+       fclose(stdin);
+       bfs_write();
+       ucs_write();
+       dls_write();
+       ids_write();
+       gbfs_write();
+       AStar_write();
+}
+void init() {
+       int ch;
+       cout << "1. Online\n2. Offline(Enter 20 input state in in.txt file before running this mode)\n";
+       /*
+       N
+       NxN matrix
+       */
+       cin >> ch;
+       if (ch == 1) {
+              Online();
+       } else {
+              Offline();
+       }
+}
 int main() {
-       //  read;
-       // write;
-       //input();
        init();
 }
-//g++ AiSearch.cpp input.cpp && ./a.out
